@@ -121,7 +121,7 @@ public class ItemCounterPlugin extends Plugin
 				int itemId = item.getId();
 				String itemName = itemManager.getItemComposition(itemId).getName();
 				if (regex.matcher(itemName).matches()) {
-					running_total++;
+					running_total+=item.getQuantity();
 					matchedAny = true;
 					ItemCounter counter = itemMap.getOrDefault(regex.pattern(), null);
 					if (counter == null) {
