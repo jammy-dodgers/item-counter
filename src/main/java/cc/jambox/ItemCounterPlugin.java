@@ -16,7 +16,9 @@ import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.infobox.InfoBoxManager;
+import net.runelite.client.util.Text;
 
+import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -52,18 +54,10 @@ public class ItemCounterPlugin extends Plugin
 	@Override
 	protected void startUp() throws Exception
 	{
-		regexes = Arrays.stream(config.itemList().split(",")).map(n -> Pattern.compile(n, Pattern.CASE_INSENSITIVE)).toArray(Pattern[]::new);
+		regexes = Text.fromCSV(config.itemList()).stream()
+				.map(n -> Pattern.compile(n, Pattern.CASE_INSENSITIVE)).toArray(Pattern[]::new);
 		itemMap = new HashMap<>();
-		clientThread.invokeLater(() ->
-		{
-			ItemContainer inv = client.getItemContainer(InventoryID.INVENTORY);
-			ItemContainer eqp = client.getItemContainer(InventoryID.EQUIPMENT);
-			Item[] invItems = inv == null ? new Item[0] : inv.getItems();
-			Item[] eqpItems = eqp == null ? new Item[0] : eqp.getItems();
-			if (inv != null && eqp != null) {
-				checkInventory(Stream.concat(Arrays.stream(invItems), Arrays.stream(eqpItems)).toArray(Item[]::new));
-			}
-		});
+		update();
 
 		log.info("ItemCounterPlugin started!");
 	}
@@ -77,30 +71,16 @@ public class ItemCounterPlugin extends Plugin
 
 	@Subscribe
 	public void onConfigChanged(ConfigChanged configChanged) {
-		if (configChanged.getGroup() != "itemcounter") {
+		if (!configChanged.getGroup().equals("itemcounter")) {
 			return;
 		}
+		log.info("itemcounter config changed");
 		itemMap.values().stream().forEach(rem -> infoBoxManager.removeInfoBox(rem));
-		regexes = Arrays.stream(config.itemList().split(",")).map(n -> Pattern.compile(n, Pattern.CASE_INSENSITIVE)).toArray(Pattern[]::new);
-		ItemContainer inv = client.getItemContainer(InventoryID.INVENTORY);
-		ItemContainer eqp = client.getItemContainer(InventoryID.EQUIPMENT);
-		Item[] invItems = inv == null ? new Item[0] : inv.getItems();
-		Item[] eqpItems = eqp == null ? new Item[0] : eqp.getItems();
-		if (inv != null && eqp != null) {
-			clientThread.invokeLater(() -> {
-				checkInventory(Stream.concat(Arrays.stream(invItems), Arrays.stream(eqpItems)).toArray(Item[]::new));
-			});
-		}
+		itemMap.clear();
+		regexes = Text.fromCSV(config.itemList()).stream()
+				.map(n -> Pattern.compile(n, Pattern.CASE_INSENSITIVE)).toArray(Pattern[]::new);
+		update();
 	}
-
-//	@Subscribe
-//	public void onGameStateChanged(GameStateChanged gameStateChanged)
-//	{
-//		if (gameStateChanged.getGameState() == GameState.LOGGED_IN)
-//		{
-//			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Example says " + config.greeting(), null);
-//		}
-//	}
 
 	@Subscribe
 	public void onItemContainerChanged(ItemContainerChanged event)
@@ -109,23 +89,35 @@ public class ItemCounterPlugin extends Plugin
 		ItemContainer eqp = client.getItemContainer(InventoryID.EQUIPMENT);
 		if ((event.getItemContainer() == inv) || (event.getItemContainer() == eqp))
 		{
-			checkInventory(Stream.concat(Arrays.stream(inv.getItems()), Arrays.stream(eqp.getItems())).toArray(Item[]::new));
+			checkInventory(multicat_p(Item[].class,inv.getItems(), eqp.getItems()));
+		}
+	}
+
+	public void update() {
+
+		ItemContainer inv = client.getItemContainer(InventoryID.INVENTORY);
+		ItemContainer eqp = client.getItemContainer(InventoryID.EQUIPMENT);
+		Item[] invItems = inv == null ? new Item[0] : inv.getItems();
+		Item[] eqpItems = eqp == null ? new Item[0] : eqp.getItems();
+		if (inv != null && eqp != null) {
+			clientThread.invokeLater(() -> {
+				checkInventory(multicat_p(Item[].class, invItems, eqpItems));
+			});
 		}
 	}
 
 	private void checkInventory(final Item[] invItems) {
 		for (Pattern regex: regexes) {
-			boolean matchedAny = false;
 			int running_total = 0;
 			for (Item item: invItems) {
 				int itemId = item.getId();
 				String itemName = itemManager.getItemComposition(itemId).getName();
 				if (regex.matcher(itemName).matches()) {
-					running_total+=item.getQuantity();
-					matchedAny = true;
+					running_total += config.countQuantity() ? item.getQuantity() : 1;
 					ItemCounter counter = itemMap.getOrDefault(regex.pattern(), null);
 					if (counter == null) {
-						counter = new ItemCounter(itemManager.getImage(itemId), itemId, regex.pattern(), running_total, this);
+						counter = new ItemCounter(itemManager.getImage(itemId), itemId, regex.pattern(),
+								running_total, this, config.formatAsOsrsNumber());
 						infoBoxManager.addInfoBox(counter);
 						itemMap.put(regex.pattern(), counter);
 					}
@@ -136,6 +128,29 @@ public class ItemCounterPlugin extends Plugin
 				counter.setCount(running_total);
 			}
 		}
+	}
+
+	public static <T> T[] multicat_p(Class<T[]> clss, T[]... stuff) {
+		return multicat_a(clss, stuff);
+	}
+	public static <T> T[] multicat_a(Class<T[]> clss, T[][] stuff) {
+		int total_len = 0;
+		for (T[] a : stuff) {
+			if (a != null) {
+				total_len += a.length;
+			}
+		}
+					// i seriously despise type erasure
+		T[] result = clss.cast(Array.newInstance(clss.getComponentType(), total_len));
+		int overall_idx = 0;
+		for (T[] thingy : stuff) {
+			if (thingy != null) {
+				for (int i = 0; i < thingy.length; i++) {
+					result[overall_idx++] = thingy[i];
+				}
+			}
+		}
+		return result;
 	}
 
 	@Provides
