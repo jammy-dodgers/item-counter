@@ -28,7 +28,7 @@ import java.util.stream.Stream;
 
 @Slf4j
 @PluginDescriptor(
-	name = "Item Counter"
+	name = "Regex Item Counter"
 )
 public class ItemCounterPlugin extends Plugin
 {
@@ -59,22 +59,22 @@ public class ItemCounterPlugin extends Plugin
 		itemMap = new HashMap<>();
 		update();
 
-		log.info("ItemCounterPlugin started!");
+		log.info("RegexItemCounterPlugin started!");
 	}
 
 	@Override
 	protected void shutDown() throws Exception
 	{
 		itemMap.values().stream().forEach(rem -> infoBoxManager.removeInfoBox(rem));
-		log.info("ItemCounterPlugin stopped!");
+		log.info("RegexItemCounterPlugin stopped!");
 	}
 
 	@Subscribe
 	public void onConfigChanged(ConfigChanged configChanged) {
-		if (!configChanged.getGroup().equals("itemcounter")) {
+		if (!configChanged.getGroup().equals("regexitemcounter")) {
 			return;
 		}
-		log.info("itemcounter config changed");
+		log.info("Regexitemcounter config changed");
 		itemMap.values().stream().forEach(rem -> infoBoxManager.removeInfoBox(rem));
 		itemMap.clear();
 		regexes = Text.fromCSV(config.itemList()).stream()

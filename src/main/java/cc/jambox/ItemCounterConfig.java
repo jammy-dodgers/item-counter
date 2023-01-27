@@ -6,7 +6,7 @@ import net.runelite.client.config.ConfigItem;
 
 import java.util.Arrays;
 
-@ConfigGroup("itemcounter")
+@ConfigGroup("regexitemcounter")
 public interface ItemCounterConfig extends Config
 {
 	@ConfigItem(
