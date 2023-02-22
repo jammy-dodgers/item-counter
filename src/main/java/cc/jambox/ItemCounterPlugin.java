@@ -58,15 +58,12 @@ public class ItemCounterPlugin extends Plugin
 				.map(n -> Pattern.compile(n, Pattern.CASE_INSENSITIVE)).toArray(Pattern[]::new);
 		itemMap = new HashMap<>();
 		update();
-
-		log.info("RegexItemCounterPlugin started!");
 	}
 
 	@Override
 	protected void shutDown() throws Exception
 	{
 		itemMap.values().stream().forEach(rem -> infoBoxManager.removeInfoBox(rem));
-		log.info("RegexItemCounterPlugin stopped!");
 	}
 
 	@Subscribe
@@ -74,7 +71,6 @@ public class ItemCounterPlugin extends Plugin
 		if (!configChanged.getGroup().equals("regexitemcounter")) {
 			return;
 		}
-		log.info("Regexitemcounter config changed");
 		itemMap.values().stream().forEach(rem -> infoBoxManager.removeInfoBox(rem));
 		itemMap.clear();
 		regexes = Text.fromCSV(config.itemList()).stream()
@@ -89,7 +85,7 @@ public class ItemCounterPlugin extends Plugin
 		ItemContainer eqp = client.getItemContainer(InventoryID.EQUIPMENT);
 		if ((event.getItemContainer() == inv) || (event.getItemContainer() == eqp))
 		{
-			checkInventory(multicat_p(Item[].class,inv.getItems(), eqp.getItems()));
+			checkInventory(flattenItemArrayParams(inv.getItems(), eqp.getItems()));
 		}
 	}
 
@@ -101,7 +97,7 @@ public class ItemCounterPlugin extends Plugin
 		Item[] eqpItems = eqp == null ? new Item[0] : eqp.getItems();
 		if (inv != null && eqp != null) {
 			clientThread.invokeLater(() -> {
-				checkInventory(multicat_p(Item[].class, invItems, eqpItems));
+				checkInventory(flattenItemArrayParams(invItems, eqpItems));
 			});
 		}
 	}
@@ -129,24 +125,22 @@ public class ItemCounterPlugin extends Plugin
 			}
 		}
 	}
-
-	public static <T> T[] multicat_p(Class<T[]> clss, T[]... stuff) {
-		return multicat_a(clss, stuff);
+	public static Item[] flattenItemArrayParams(Item[]... stuff) {
+		return flattenItemArrays(stuff);
 	}
-	public static <T> T[] multicat_a(Class<T[]> clss, T[][] stuff) {
+	public static Item[] flattenItemArrays(Item[][] itemSets) {
 		int total_len = 0;
-		for (T[] a : stuff) {
-			if (a != null) {
-				total_len += a.length;
+		for (Item[] itemSet : itemSets) {
+			if (itemSet != null) {
+				total_len += itemSet.length;
 			}
 		}
-					// i seriously despise type erasure
-		T[] result = clss.cast(Array.newInstance(clss.getComponentType(), total_len));
+		Item[] result = new Item[total_len];
 		int overall_idx = 0;
-		for (T[] thingy : stuff) {
-			if (thingy != null) {
-				for (int i = 0; i < thingy.length; i++) {
-					result[overall_idx++] = thingy[i];
+		for (Item[] itemSet : itemSets) {
+			if (itemSet != null) {
+				for (int i = 0; i < itemSet.length; i++) {
+					result[overall_idx++] = itemSet[i];
 				}
 			}
 		}
