@@ -57,7 +57,7 @@ public class ItemCounterPlugin extends Plugin
 		regexes = Text.fromCSV(config.itemList()).stream()
 				.map(n -> Pattern.compile(n, Pattern.CASE_INSENSITIVE)).toArray(Pattern[]::new);
 		itemMap = new HashMap<>();
-		update();
+		clientThread.invoke(this::update);
 	}
 
 	@Override
@@ -75,7 +75,7 @@ public class ItemCounterPlugin extends Plugin
 		itemMap.clear();
 		regexes = Text.fromCSV(config.itemList()).stream()
 				.map(n -> Pattern.compile(n, Pattern.CASE_INSENSITIVE)).toArray(Pattern[]::new);
-		update();
+		clientThread.invoke(this::update);
 	}
 
 	@Subscribe
