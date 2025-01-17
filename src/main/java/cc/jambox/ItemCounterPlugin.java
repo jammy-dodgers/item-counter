@@ -76,10 +76,9 @@ public class ItemCounterPlugin extends Plugin
 	{
 		ItemContainer inv = client.getItemContainer(InventoryID.INVENTORY);
 		ItemContainer eqp = client.getItemContainer(InventoryID.EQUIPMENT);
-		if ((event.getItemContainer() == inv) || (event.getItemContainer() == eqp))
-		{
-			checkInventory(flattenItemArrayParams(inv.getItems(), eqp.getItems()));
-		}
+		if (inv == null || eqp == null || (event.getItemContainer() != inv && event.getItemContainer() != eqp)) return;
+
+		checkInventory(flattenItemArrayParams(inv.getItems(), eqp.getItems()));
 	}
 
 	public void update() {
