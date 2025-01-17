@@ -19,6 +19,9 @@ import net.runelite.client.util.Text;
 import java.util.HashMap;
 import java.util.regex.Pattern;
 
+import static net.runelite.api.InventoryID.EQUIPMENT;
+import static net.runelite.api.InventoryID.INVENTORY;
+
 @Slf4j
 @PluginDescriptor(
 	name = "Regex Item Counter"
@@ -50,7 +53,7 @@ public class ItemCounterPlugin extends Plugin
 		regexes = Text.fromCSV(config.itemList()).stream()
 				.map(n -> Pattern.compile(n, Pattern.CASE_INSENSITIVE)).toArray(Pattern[]::new);
 		itemMap = new HashMap<>();
-		clientThread.invoke(this::update);
+		clientThread.invokeLater(this::checkInventory);
 	}
 
 	@Override
@@ -68,33 +71,23 @@ public class ItemCounterPlugin extends Plugin
 		itemMap.clear();
 		regexes = Text.fromCSV(config.itemList()).stream()
 				.map(n -> Pattern.compile(n, Pattern.CASE_INSENSITIVE)).toArray(Pattern[]::new);
-		clientThread.invoke(this::update);
+		clientThread.invokeLater(this::checkInventory);
 	}
 
 	@Subscribe
-	public void onItemContainerChanged(ItemContainerChanged event)
-	{
-		ItemContainer inv = client.getItemContainer(InventoryID.INVENTORY);
-		ItemContainer eqp = client.getItemContainer(InventoryID.EQUIPMENT);
-		if (inv == null || eqp == null || (event.getItemContainer() != inv && event.getItemContainer() != eqp)) return;
+	public void onItemContainerChanged(ItemContainerChanged event) {
+		ItemContainer itemContainer = event.getItemContainer();
+		if (itemContainer.getId() != INVENTORY.getId() && itemContainer.getId() != EQUIPMENT.getId()) return;
 
-		checkInventory(flattenItemArrayParams(inv.getItems(), eqp.getItems()));
+		checkInventory();
 	}
 
-	public void update() {
+	private void checkInventory() {
+		ItemContainer inv = client.getItemContainer(INVENTORY);
+		ItemContainer eqp = client.getItemContainer(EQUIPMENT);
+		if (inv == null || eqp == null) return;
+		final Item[] invItems = flattenItemArrayParams(inv.getItems(), eqp.getItems());
 
-		ItemContainer inv = client.getItemContainer(InventoryID.INVENTORY);
-		ItemContainer eqp = client.getItemContainer(InventoryID.EQUIPMENT);
-		Item[] invItems = inv == null ? new Item[0] : inv.getItems();
-		Item[] eqpItems = eqp == null ? new Item[0] : eqp.getItems();
-		if (inv != null && eqp != null) {
-			clientThread.invokeLater(() -> {
-				checkInventory(flattenItemArrayParams(invItems, eqpItems));
-			});
-		}
-	}
-
-	private void checkInventory(final Item[] invItems) {
 		for (Pattern regex: regexes) {
 			int running_total = 0;
 			for (Item item: invItems) {
