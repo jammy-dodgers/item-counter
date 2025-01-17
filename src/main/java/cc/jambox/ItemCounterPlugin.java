@@ -2,11 +2,9 @@ package cc.jambox;
 
 import com.google.inject.Provides;
 import javax.inject.Inject;
-import javax.swing.text.html.Option;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
-import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
@@ -18,13 +16,8 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.infobox.InfoBoxManager;
 import net.runelite.client.util.Text;
 
-import java.lang.reflect.Array;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 @Slf4j
 @PluginDescriptor(
