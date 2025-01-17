@@ -59,7 +59,7 @@ public class ItemCounterPlugin extends Plugin
 	@Override
 	protected void shutDown() throws Exception
 	{
-		itemMap.values().stream().forEach(rem -> infoBoxManager.removeInfoBox(rem));
+		itemMap.values().forEach(rem -> infoBoxManager.removeInfoBox(rem));
 	}
 
 	@Subscribe
@@ -67,7 +67,7 @@ public class ItemCounterPlugin extends Plugin
 		if (!configChanged.getGroup().equals("regexitemcounter")) {
 			return;
 		}
-		itemMap.values().stream().forEach(rem -> infoBoxManager.removeInfoBox(rem));
+		itemMap.values().forEach(rem -> infoBoxManager.removeInfoBox(rem));
 		itemMap.clear();
 		regexes = Text.fromCSV(config.itemList()).stream()
 				.map(n -> Pattern.compile(n, Pattern.CASE_INSENSITIVE)).toArray(Pattern[]::new);
