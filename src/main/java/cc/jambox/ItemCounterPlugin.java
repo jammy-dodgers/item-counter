@@ -86,7 +86,7 @@ public class ItemCounterPlugin extends Plugin
 		ItemContainer inv = client.getItemContainer(INVENTORY);
 		ItemContainer eqp = client.getItemContainer(EQUIPMENT);
 		if (inv == null || eqp == null) return;
-		final Item[] invItems = flattenItemArrayParams(inv.getItems(), eqp.getItems());
+		final Item[] invItems = flattenItemArrays(inv.getItems(), eqp.getItems());
 
 		for (Pattern regex: regexes) {
 			int running_total = 0;
@@ -110,10 +110,8 @@ public class ItemCounterPlugin extends Plugin
 			}
 		}
 	}
-	public static Item[] flattenItemArrayParams(Item[]... stuff) {
-		return flattenItemArrays(stuff);
-	}
-	public static Item[] flattenItemArrays(Item[][] itemSets) {
+
+	public static Item[] flattenItemArrays(Item[]... itemSets) {
 		int total_len = 0;
 		for (Item[] itemSet : itemSets) {
 			if (itemSet != null) {
