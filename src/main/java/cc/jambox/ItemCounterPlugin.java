@@ -95,11 +95,11 @@ public class ItemCounterPlugin extends Plugin
 			for (Item item: invItems) {
 				int itemId = item.getId();
 				String itemName = itemManager.getItemComposition(itemId).getName();
-                if (!regex.matcher(itemName).matches()) continue;
+				if (!regex.matcher(itemName).matches()) continue;
 
-                running_total += config.countQuantity() ? item.getQuantity() : 1;
+				running_total += config.countQuantity() ? item.getQuantity() : 1;
 				itemMap.computeIfAbsent(regex.pattern(), pattern -> registerCounter(itemId, pattern));
-            }
+			}
 			if (itemMap.containsKey(regex.pattern())) {
 				itemMap.get(regex.pattern()).setCount(running_total);
 			}
@@ -118,17 +118,17 @@ public class ItemCounterPlugin extends Plugin
 		Item[] result = new Item[totalLen];
 		int overall_idx = 0;
 		for (Item[] itemSet : itemSets) {
-            if (itemSet == null) continue;
+			if (itemSet == null) continue;
 
-            for (Item item : itemSet) {
-                result[overall_idx++] = item;
-            }
-        }
+			for (Item item : itemSet) {
+				result[overall_idx++] = item;
+			}
+		}
 		return result;
 	}
 
 	@Provides
-    ItemCounterConfig provideConfig(ConfigManager configManager)
+	ItemCounterConfig provideConfig(ConfigManager configManager)
 	{
 		return configManager.getConfig(ItemCounterConfig.class);
 	}
