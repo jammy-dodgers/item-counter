@@ -16,6 +16,8 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.infobox.InfoBoxManager;
 import net.runelite.client.util.Text;
 
+import java.lang.reflect.Array;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.regex.Pattern;
 
@@ -96,29 +98,24 @@ public class ItemCounterPlugin extends Plugin
                 if (!regex.matcher(itemName).matches()) continue;
 
                 running_total += config.countQuantity() ? item.getQuantity() : 1;
-                ItemCounter counter = itemMap.getOrDefault(regex.pattern(), null);
-                if (counter != null) continue;
-
-                counter = new ItemCounter(itemManager.getImage(itemId), itemId, regex.pattern(),
-                        running_total, this, config.formatAsOsrsNumber());
-                infoBoxManager.addInfoBox(counter);
-                itemMap.put(regex.pattern(), counter);
+				itemMap.computeIfAbsent(regex.pattern(), pattern -> registerCounter(itemId, pattern));
             }
-			ItemCounter counter = itemMap.getOrDefault(regex.pattern(), null);
-			if (counter != null) {
-				counter.setCount(running_total);
+			if (itemMap.containsKey(regex.pattern())) {
+				itemMap.get(regex.pattern()).setCount(running_total);
 			}
 		}
 	}
 
-	public static Item[] flattenItemArrays(Item[]... itemSets) {
-		int total_len = 0;
-		for (Item[] itemSet : itemSets) {
-			if (itemSet != null) {
-				total_len += itemSet.length;
-			}
-		}
-		Item[] result = new Item[total_len];
+	private ItemCounter registerCounter(int itemId, String pattern) {
+		ItemCounter counter = new ItemCounter(itemManager.getImage(itemId), itemId, pattern, 0, this,
+				config.formatAsOsrsNumber());
+		infoBoxManager.addInfoBox(counter);
+		return counter;
+	}
+
+	private static Item[] flattenItemArrays(Item[]... itemSets) {
+		int totalLen = Arrays.stream(itemSets).mapToInt(Array::getLength).reduce(0, Integer::sum);
+		Item[] result = new Item[totalLen];
 		int overall_idx = 0;
 		for (Item[] itemSet : itemSets) {
             if (itemSet == null) continue;
