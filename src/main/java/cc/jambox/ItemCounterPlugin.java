@@ -21,9 +21,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.regex.Pattern;
 
-import static net.runelite.api.InventoryID.EQUIPMENT;
-import static net.runelite.api.InventoryID.INVENTORY;
-
 @Slf4j
 @PluginDescriptor(
 	name = "Regex Item Counter"
@@ -78,15 +75,15 @@ public class ItemCounterPlugin extends Plugin
 
 	@Subscribe
 	public void onItemContainerChanged(ItemContainerChanged event) {
-		ItemContainer itemContainer = event.getItemContainer();
-		if (itemContainer.getId() != INVENTORY.getId() && itemContainer.getId() != EQUIPMENT.getId()) return;
+		int containerId = event.getItemContainer().getId();
+		if (containerId != InventoryID.INVENTORY.getId() && containerId != InventoryID.EQUIPMENT.getId()) return;
 
 		checkInventory();
 	}
 
 	private void checkInventory() {
-		ItemContainer inv = client.getItemContainer(INVENTORY);
-		ItemContainer eqp = client.getItemContainer(EQUIPMENT);
+		ItemContainer inv = client.getItemContainer(InventoryID.INVENTORY);
+		ItemContainer eqp = client.getItemContainer(InventoryID.EQUIPMENT);
 		if (inv == null || eqp == null) return;
 		final Item[] invItems = flattenItemArrays(inv.getItems(), eqp.getItems());
 
