@@ -2,11 +2,9 @@ package cc.jambox;
 
 import com.google.inject.Provides;
 import javax.inject.Inject;
-import javax.swing.text.html.Option;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
-import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
@@ -21,10 +19,7 @@ import net.runelite.client.util.Text;
 import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 @Slf4j
 @PluginDescriptor(
@@ -57,13 +52,13 @@ public class ItemCounterPlugin extends Plugin
 		regexes = Text.fromCSV(config.itemList()).stream()
 				.map(n -> Pattern.compile(n, Pattern.CASE_INSENSITIVE)).toArray(Pattern[]::new);
 		itemMap = new HashMap<>();
-		update();
+		clientThread.invokeLater(this::checkInventory);
 	}
 
 	@Override
 	protected void shutDown() throws Exception
 	{
-		itemMap.values().stream().forEach(rem -> infoBoxManager.removeInfoBox(rem));
+		itemMap.values().forEach(rem -> infoBoxManager.removeInfoBox(rem));
 	}
 
 	@Subscribe
@@ -71,84 +66,66 @@ public class ItemCounterPlugin extends Plugin
 		if (!configChanged.getGroup().equals("regexitemcounter")) {
 			return;
 		}
-		itemMap.values().stream().forEach(rem -> infoBoxManager.removeInfoBox(rem));
+		itemMap.values().forEach(rem -> infoBoxManager.removeInfoBox(rem));
 		itemMap.clear();
 		regexes = Text.fromCSV(config.itemList()).stream()
 				.map(n -> Pattern.compile(n, Pattern.CASE_INSENSITIVE)).toArray(Pattern[]::new);
-		update();
+		clientThread.invokeLater(this::checkInventory);
 	}
 
 	@Subscribe
-	public void onItemContainerChanged(ItemContainerChanged event)
-	{
-		ItemContainer inv = client.getItemContainer(InventoryID.INVENTORY);
-		ItemContainer eqp = client.getItemContainer(InventoryID.EQUIPMENT);
-		if ((event.getItemContainer() == inv) || (event.getItemContainer() == eqp))
-		{
-			checkInventory(flattenItemArrayParams(inv.getItems(), eqp.getItems()));
-		}
+	public void onItemContainerChanged(ItemContainerChanged event) {
+		int containerId = event.getItemContainer().getId();
+		if (containerId != InventoryID.INVENTORY.getId() && containerId != InventoryID.EQUIPMENT.getId()) return;
+
+		checkInventory();
 	}
 
-	public void update() {
-
+	private void checkInventory() {
 		ItemContainer inv = client.getItemContainer(InventoryID.INVENTORY);
 		ItemContainer eqp = client.getItemContainer(InventoryID.EQUIPMENT);
-		Item[] invItems = inv == null ? new Item[0] : inv.getItems();
-		Item[] eqpItems = eqp == null ? new Item[0] : eqp.getItems();
-		if (inv != null && eqp != null) {
-			clientThread.invokeLater(() -> {
-				checkInventory(flattenItemArrayParams(invItems, eqpItems));
-			});
-		}
-	}
+		if (inv == null || eqp == null) return;
+		final Item[] invItems = flattenItemArrays(inv.getItems(), eqp.getItems());
 
-	private void checkInventory(final Item[] invItems) {
 		for (Pattern regex: regexes) {
 			int running_total = 0;
 			for (Item item: invItems) {
 				int itemId = item.getId();
 				String itemName = itemManager.getItemComposition(itemId).getName();
-				if (regex.matcher(itemName).matches()) {
-					running_total += config.countQuantity() ? item.getQuantity() : 1;
-					ItemCounter counter = itemMap.getOrDefault(regex.pattern(), null);
-					if (counter == null) {
-						counter = new ItemCounter(itemManager.getImage(itemId), itemId, regex.pattern(),
-								running_total, this, config.formatAsOsrsNumber());
-						infoBoxManager.addInfoBox(counter);
-						itemMap.put(regex.pattern(), counter);
-					}
-				}
+				if (!regex.matcher(itemName).matches()) continue;
+
+				running_total += config.countQuantity() ? item.getQuantity() : 1;
+				itemMap.computeIfAbsent(regex.pattern(), pattern -> registerCounter(itemId, pattern));
 			}
-			ItemCounter counter = itemMap.getOrDefault(regex.pattern(), null);
-			if (counter != null) {
-				counter.setCount(running_total);
+			if (itemMap.containsKey(regex.pattern())) {
+				itemMap.get(regex.pattern()).setCount(running_total);
 			}
 		}
 	}
-	public static Item[] flattenItemArrayParams(Item[]... stuff) {
-		return flattenItemArrays(stuff);
+
+	private ItemCounter registerCounter(int itemId, String pattern) {
+		ItemCounter counter = new ItemCounter(itemManager.getImage(itemId), itemId, pattern, 0, this,
+				config.formatAsOsrsNumber());
+		infoBoxManager.addInfoBox(counter);
+		return counter;
 	}
-	public static Item[] flattenItemArrays(Item[][] itemSets) {
-		int total_len = 0;
-		for (Item[] itemSet : itemSets) {
-			if (itemSet != null) {
-				total_len += itemSet.length;
-			}
-		}
-		Item[] result = new Item[total_len];
+
+	private static Item[] flattenItemArrays(Item[]... itemSets) {
+		int totalLen = Arrays.stream(itemSets).mapToInt(Array::getLength).reduce(0, Integer::sum);
+		Item[] result = new Item[totalLen];
 		int overall_idx = 0;
 		for (Item[] itemSet : itemSets) {
-			if (itemSet != null) {
-				for (int i = 0; i < itemSet.length; i++) {
-					result[overall_idx++] = itemSet[i];
-				}
+			if (itemSet == null) continue;
+
+			for (Item item : itemSet) {
+				result[overall_idx++] = item;
 			}
 		}
 		return result;
 	}
 
 	@Provides
-    ItemCounterConfig provideConfig(ConfigManager configManager)
+	ItemCounterConfig provideConfig(ConfigManager configManager)
 	{
 		return configManager.getConfig(ItemCounterConfig.class);
 	}
